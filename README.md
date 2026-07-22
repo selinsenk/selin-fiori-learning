@@ -1,5 +1,4 @@
 # Tax Rates × Balance Sheet — a Fiori Elements + ABAP learning project
---TEST OGUZ--
 
 A small, complete SAP app built twice:
 
