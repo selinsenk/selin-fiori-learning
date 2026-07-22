@@ -1,0 +1,58 @@
+/*******************************************************************************
+ * ZUI_TB_TAXBALANCE.srvd  —  THE SERVICE DEFINITION
+ *
+ * COMPARE WITH: the `service TaxBalanceService { ... }` block in
+ *               srv/tax-service.cds
+ *
+ * A service definition is a list. It says: "these entities, under these names,
+ * form one API." That is all. It does not say WHERE the API lives or which
+ * protocol it speaks - that is the service binding's job (see BINDING.md).
+ *
+ * The split matters: one service definition can be bound twice, e.g. as OData
+ * V2 for an old app and OData V4 for a new one, without duplicating anything.
+ * In CAP the two are fused - `service X @(path:'...')` declares the list AND
+ * the URL, and CAP always speaks OData V4.
+ ******************************************************************************/
+
+@EndUserText.label: 'Tax Rates and Balance Sheet Comparison'
+define service ZUI_TB_TAXBALANCE
+{
+  /*--------------------------------------------------------------------------
+   * `expose <CDS view> as <EntitySetName>;`
+   *
+   * The alias after `as` is the name that appears in the OData URL. Compare the
+   * two services - they publish the same six entity sets:
+   *
+   *    ABAP (here)                          CAP (srv/tax-service.cds)
+   *    -----------------------------------  ---------------------------------
+   *    expose ZC_TB_CompanyLayer as         entity CompanyLayers as
+   *           CompanyLayers                        projection on db.CompanyLayers
+   *    expose ZC_TB_TaxRate as TaxRates     entity TaxRates ...
+   *    expose ZC_TB_GLAccount as GLAccounts @readonly entity GLAccounts ...
+   *
+   * Resulting URL in each case:
+   *    ABAP: /sap/opu/odata4/sap/zui_tb_taxbalance_o4/srvd/sap/zui_tb_taxbalance/0001/CompanyLayers
+   *    CAP : /odata/v4/tax-balance/CompanyLayers
+   *-------------------------------------------------------------------------*/
+
+  // The business object.
+  expose ZC_TB_CompanyLayer as CompanyLayers;
+  expose ZC_TB_TaxRate      as TaxRates;
+  expose ZC_TB_GLAccount    as GLAccounts;
+
+  /*--------------------------------------------------------------------------
+   * The value help providers.
+   *
+   * EASY TO FORGET, ANNOYING TO DEBUG: a value help will not work unless the
+   * view it reads from is exposed in the same service. If you annotate a field
+   * with @Consumption.valueHelpDefinition but do not expose the target view
+   * here, the dropdown opens empty with no error message.
+   *
+   * We hit the same rule in CAP: srv/annotations.cds points CollectionPath at
+   * 'CompanyCodes' and 'Layers', which is why srv/tax-service.cds must expose
+   * those two entities even though no screen displays them directly.
+   *-------------------------------------------------------------------------*/
+  expose ZI_TB_Layer        as Layers;
+  expose I_CompanyCodeStdVH as CompanyCodes;   // SAP-released value help view
+  expose I_Country          as Countries;      // SAP-released country view
+}

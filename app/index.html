@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tax Rates &amp; Balance Sheet — start here</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+         max-width: 780px; margin: 0 auto; padding: 32px 24px 64px; line-height: 1.55;
+         background: #f8fbff; color: #274054; }
+  h1 { font-weight: 500; margin: 0 0 4px; }
+  .sub { color: #5c7a94; margin: 0 0 28px; }
+  .cta { display: block; padding: 18px 22px; margin: 0 0 28px; border-radius: 10px;
+         background: #0a6ed1; color: #fff; text-decoration: none; font-size: 1.15rem; font-weight: 500; }
+  .cta:hover { background: #0854a0; }
+  .cta small { display: block; font-weight: 400; opacity: .85; font-size: .78rem; margin-top: 4px; }
+  h2 { font-size: .82rem; text-transform: uppercase; letter-spacing: .06em;
+       color: #7a8fa3; margin: 30px 0 10px; font-weight: 600; }
+  ul { list-style: none; padding: 0; margin: 0; }
+  li { margin: 0 0 2px; }
+  li a { display: block; padding: 8px 12px; background: #e8f2fb; border-radius: 6px;
+         text-decoration: none; color: #1d5985; }
+  li a:hover { background: #d3e7f8; }
+  li a code { font-size: .82rem; color: #5c7a94; }
+  .note { background: #fff8e1; border-left: 3px solid #e9b949; padding: 12px 16px;
+          border-radius: 0 6px 6px 0; font-size: .9rem; margin-top: 28px; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #0a2138; color: #c8dced; }
+    li a { background: #16334f; color: #a9cdea; }
+    li a:hover { background: #1e4467; }
+    .note { background: #33290c; border-color: #a8862f; }
+    .sub { color: #8aa6bf; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Tax Rates &amp; Balance Sheet</h1>
+<p class="sub">Local CAP backend + Fiori Elements frontend. The server is running.</p>
+
+<a class="cta" href="/taxbalance/webapp/index.html">
+  ▶ Open the Fiori app
+  <small>Pick Company Code 1000 and Layer 01, press Go, then click the row.</small>
+</a>
+
+<h2>Look at the OData service directly</h2>
+<ul>
+  <li><a href="/odata/v4/tax-balance/$metadata">$metadata <code>— the contract that builds the whole UI</code></a></li>
+  <li><a href="/odata/v4/tax-balance/CompanyLayers">CompanyLayers <code>— the entity behind Screen 1</code></a></li>
+  <li><a href="/odata/v4/tax-balance/CompanyLayers(companyCode='1000',layerID='01',IsActiveEntity=true)/taxRates">taxRates for 1000/01 <code>— Tab 1's data</code></a></li>
+  <li><a href="/odata/v4/tax-balance/CompanyLayers(companyCode='1000',layerID='01',IsActiveEntity=true)/glAccounts?$select=accountNumber,accountName,balanceAmount,calculatedAmount">glAccounts for 1000/01 <code>— Tab 2, with the calculated column</code></a></li>
+</ul>
+
+<h2>SAP's own generated preview (no frontend project involved)</h2>
+<ul>
+  <li><a href="/$fiori-preview/TaxBalanceService/CompanyLayers#preview-app">Fiori preview of CompanyLayers <code>— the same annotations, rendered by CAP</code></a></li>
+</ul>
+
+<div class="note">
+  <strong>Blank white page after clicking the button?</strong>
+  Give it 5–10 seconds on first load — SAPUI5 is downloading from
+  <code>https://ui5.sap.com</code>. If it stays blank for longer, open the
+  console (F12) and look at the <em>file names</em> in the error lines:
+
+  <ol style="margin:10px 0 0; padding-left:20px">
+    <li><strong>Names ending in <code>-dbg.js</code></strong>
+      (<code>Log-dbg.js</code>, <code>Device-dbg.js</code>) mean UI5
+      <em>debug sources</em> are switched on. UI5 then loads ~250 unminified
+      files instead of ~70 bundled ones, which turns a 1-second start into
+      minutes — or a page that never finishes on a slow connection.
+      Fix: reload once with
+      <code>?sap-ui-debug=false</code> appended to the app URL, or press
+      <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd> in the app
+      and untick “Use Debug Sources”.</li>
+
+    <li><strong>Requests for <code>i18n_en.properties</code> /
+      <code>i18n_tr.properties</code></strong> mean the browser is running a
+      <em>cached older copy</em> of <code>manifest.json</code> — the current
+      one pins <code>supportedLocales</code> so only
+      <code>i18n.properties</code> is fetched. Fix: tick “Disable cache” on the
+      Network tab, then hard-reload with
+      <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd>.</li>
+
+    <li><strong>A failed request to <code>ui5.sap.com</code> itself</strong>
+      means your network is blocking the CDN.</li>
+  </ol>
+
+  <p style="margin:10px 0 0">Errors mentioning
+  <code>Component-preload.js</code>, <code>/sap/bc/lrep/</code> or
+  <code>S/CUBE</code> are <strong>normal</strong> here and do not stop the app —
+  see the long comment in <code>app/taxbalance/webapp/index.html</code> for what
+  each one means.</p>
+</div>
+
+</body>
+</html>

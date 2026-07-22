@@ -1,0 +1,176 @@
+/*******************************************************************************
+ * ZC_TB_CompanyLayer.ddlx  —  THE UI, IN ABAP CDS
+ *
+ * *** THIS IS THE MOST IMPORTANT FILE FOR THE FIORI <-> ABAP COMPARISON. ***
+ * Read it next to srv/annotations.cds. They produce the same screens.
+ *
+ * The annotation TERMS are literally the same OData vocabulary in both cases
+ * (com.sap.vocabularies.UI.v1.*). Only the spelling differs:
+ *
+ *      CAP CDS                        ABAP CDS
+ *      -----------------------        ---------------------------
+ *      UI.LineItem: [...]             @UI.lineItem: [{...}]
+ *      UI.SelectionFields: [...]      @UI.selectionField: [{...}]
+ *      UI.Facets: [...]               @UI.facet: [{...}]
+ *      UI.HeaderInfo: {...}           @UI.headerInfo: {...}
+ *      $Type: 'UI.CollectionFacet'    type: #COLLECTION
+ *
+ * The biggest structural difference: CAP lists fields in ARRAY ORDER; ABAP uses
+ * an explicit `position:` number on each entry. Positions in steps of 10 are the
+ * convention, so you can insert something later without renumbering.
+ ******************************************************************************/
+
+/*
+ * @Metadata.layer decides who wins when several extensions annotate the same
+ * view. The order is:
+ *     #CORE  <  #LOCALIZATION  <  #INDUSTRY  <  #PARTNER  <  #CUSTOMER
+ * SAP ships #CORE; a customer overrides with #CUSTOMER without modifying SAP's
+ * object. This layering is how S/4HANA apps stay upgradeable.
+ *
+ * As the original author of this app, we are the "core", so: #CORE.
+ */
+@Metadata.layer: #CORE
+
+@UI: {
+  headerInfo: {
+    typeName       : 'Company Code / Layer',
+    typeNamePlural : 'Company Codes / Layers',
+    title          : { type: #STANDARD, value: 'CompanyName' },
+    description    : { type: #STANDARD, value: 'LayerDescription' }
+  }
+}
+
+annotate entity ZC_TB_CompanyLayer with
+{
+  /*==========================================================================*
+   * THE OBJECT PAGE LAYOUT - facets, i.e. the two tabs
+   *
+   * Compare with UI.Facets in srv/annotations.cds. Same structure: two
+   * collection facets, each containing reference facets.
+   *
+   * `purpose: #HEADER` marks a facet as belonging to the header area above the
+   * tabs (our UI.HeaderFacets). Facets with no purpose form the body.
+   *
+   * `targetQualifier` picks which FieldGroup/LineItem qualifier to render -
+   * the ABAP equivalent of writing '@UI.FieldGroup#CountryInfo' in CAP.
+   *==========================================================================*/
+  @UI.facet: [
+
+    // ---------- header area (always visible, above the tabs) ----------
+    { id              : 'HeaderContext',
+      purpose         : #HEADER,
+      type            : #FIELDGROUP_REFERENCE,
+      targetQualifier : 'HeaderInfo',
+      position        : 10 },
+
+    // ---------- TAB 1 : Tax Rates ----------
+    { id       : 'TaxRatesTab',
+      type     : #COLLECTION,
+      label    : 'Tax Rates',
+      position : 10 },
+
+    //   sub-section A: the country context field group
+    { id              : 'CountryContextFacet',
+      parentId        : 'TaxRatesTab',          // <- makes it a child of the tab
+      type            : #FIELDGROUP_REFERENCE,
+      label           : 'Selection Context',
+      targetQualifier : 'CountryInfo',
+      position        : 10 },
+
+    //   sub-section B: the editable tax rate table
+    //   #LINEITEM_REFERENCE + targetElement = "render the LineItem of the
+    //   entity reached through association _TaxRate". This is the ABAP spelling
+    //   of CAP's  Target: 'taxRates/@UI.LineItem'.
+    { id            : 'TaxRatesTableFacet',
+      parentId      : 'TaxRatesTab',
+      type          : #LINEITEM_REFERENCE,
+      label         : 'Tax Rate Entries',
+      targetElement : '_TaxRate',
+      position      : 20 },
+
+    // ---------- TAB 2 : Balance Sheet Comparison ----------
+    { id       : 'BalanceSheetTab',
+      type     : #COLLECTION,
+      label    : 'Balance Sheet Comparison',
+      position : 20 },
+
+    { id            : 'GLAccountsTableFacet',
+      parentId      : 'BalanceSheetTab',
+      type          : #LINEITEM_REFERENCE,
+      label         : 'G/L Accounts',
+      targetElement : '_GLAccount',
+      position      : 10 }
+  ]
+
+  /*==========================================================================*
+   * THE FIELDS
+   *
+   * In ABAP the annotations sit directly in front of the field name, and the
+   * block ends with a semicolon. Every field of the view that you want to
+   * annotate is listed; fields you do not list keep their defaults.
+   *==========================================================================*/
+
+  /*
+   * COMPANY CODE - appears in the filter bar, in the list, and in the field group.
+   *
+   *   @UI.selectionField -> the filter bar. CAP: UI.SelectionFields
+   *   @UI.lineItem       -> a table column. CAP: UI.LineItem
+   *   @UI.fieldGroup     -> membership of a named group, referenced by a facet.
+   *                         The ['CountryInfo'] syntax is how one field can
+   *                         belong to several groups at once.
+   *
+   * @Consumption.valueHelpDefinition is the ABAP twin of Common.ValueList.
+   * It is shorter than the CAP version because the value help entity already
+   * declares its own representative key and text.
+   *
+   * @Consumption.filter.mandatory: true is the "entry gate" - the Go button
+   * stays disabled until the user fills this in. It is the direct equivalent of
+   * @Capabilities.FilterRestrictions.RequiredProperties in srv/tax-service.cds.
+   */
+  @UI.selectionField : [{ position: 10 }]
+  @UI.lineItem       : [{ position: 10, importance: #HIGH }]
+  @UI.fieldGroup     : [{ qualifier: 'CountryInfo', position: 10 }]
+  @Consumption.filter.mandatory: true
+  @Consumption.valueHelpDefinition: [{ entity: { name: 'I_CompanyCodeStdVH', element: 'CompanyCode' } }]
+  CompanyCode;
+
+  @UI.selectionField : [{ position: 20 }]
+  @UI.lineItem       : [{ position: 20, importance: #HIGH }]
+  @UI.fieldGroup     : [{ qualifier: 'CountryInfo', position: 50 }]
+  @Consumption.filter.mandatory: true
+  @Consumption.valueHelpDefinition: [{ entity: { name: 'ZI_TB_Layer', element: 'LayerID' } }]
+  LayerID;
+
+  @UI.fieldGroup : [{ qualifier: 'CountryInfo', position: 20 }]
+  CompanyName;
+
+  // The country the selected company code belongs to - Tab 1's requirement.
+  @UI.lineItem   : [{ position: 30, label: 'Country' }]
+  @UI.fieldGroup : [{ qualifier: 'CountryInfo', position: 30 },
+                    { qualifier: 'HeaderInfo',  position: 10 }]
+  Country;
+
+  @UI.lineItem   : [{ position: 40, label: 'Country Name' }]
+  @UI.fieldGroup : [{ qualifier: 'CountryInfo', position: 40 }]
+  CountryName;
+
+  @UI.fieldGroup : [{ qualifier: 'CountryInfo', position: 60 },
+                    { qualifier: 'HeaderInfo',  position: 20 }]
+  LayerDescription;
+
+  /*
+   * @UI.hidden: true removes a field from all generated UI but keeps it in the
+   * service (the UI still needs the admin fields for ETag handling).
+   * CAP equivalent: @UI.Hidden.
+   */
+  @UI.hidden: true
+  CreatedBy;
+  @UI.hidden: true
+  CreatedAt;
+  @UI.hidden: true
+  LastChangedBy;
+  @UI.hidden: true
+  LastChangedAt;
+  @UI.hidden: true
+  LocalLastChangedAt;
+}

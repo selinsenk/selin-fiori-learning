@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tax Rate &amp; Balance Sheet Tool</title>
+
+    <style>
+        html, body, body > div, #container, #container-taxbalance { height: 100%; }
+    </style>
+
+    <!--
+        THE UI5 BOOTSTRAP
+        =================
+        This <script> tag is the single line that turns a plain HTML page into a
+        SAPUI5 application. Every attribute matters:
+
+        src ............... loads the UI5 runtime from SAP's public CDN. We pin
+                            version 1.148.5 - an LTS ("Long Term Support")
+                            release. In a real project on-premise you would
+                            instead point at /sapui5/resources/... served by
+                            your own SAP Gateway system.
+
+                            IMPORTANT: it must be ui5.sap.com (SAPUI5), not
+                            OpenUI5. Fiori Elements (the sap.fe.* libraries)
+                            ships only in the commercial SAPUI5 distribution.
+
+        data-sap-ui-theme . the visual theme. sap_horizon is the current SAP
+                            look; sap_fiori_3 is the older one you will still
+                            see in many systems.
+
+        data-sap-ui-resource-roots
+                            maps our namespace to a folder, so that when UI5
+                            wants "sap.learning.taxbalance.Component" it fetches
+                            "./Component.js".
+
+        data-sap-ui-oninit  runs ComponentSupport after the runtime is ready. It
+                            scans the page for elements marked
+                            data-sap-ui-component (see <div> below) and starts them.
+
+        data-sap-ui-async   load modules asynchronously. Always true nowadays.
+
+
+        A NOTE ON THE RED ERRORS IN YOUR BROWSER CONSOLE
+        ================================================
+        Open F12 on this page and you will see ~8 red lines. They are all
+        HARMLESS in a local dev setup, and you should learn to recognise them
+        rather than chase them:
+
+          Component-preload.js 404, "Refused to execute script ... MIME type"
+              UI5 always asks for Component-preload.js first: one bundled file
+              with Component.js + manifest.json + all views in it, produced by
+              `ui5 build` for production. We never run that build, so it 404s
+              (CAP answers with an HTML error page, hence the MIME complaint)
+              and UI5 quietly falls back to loading the files individually.
+
+          /sap/bc/lrep/... 404, "Connector (LrepConnector) failed"
+              SAPUI5 Flexibility looking for the SAP backend that stores user
+              personalisation (moved columns, saved filter variants). That is
+              an ABAP service; CAP has no equivalent, so it is simply absent.
+              UI5 says it best itself: "Application startup continues without
+              data from this storage."
+
+          "S/CUBE is not yet supported"
+              An analytics feature probe from sap.ui.mdc. Not our concern.
+
+        The real failure mode to watch for is the OPPOSITE: a blank white page
+        with NO errors, which means UI5 is still downloading. See the note at
+        the bottom of ../index.html about debug sources.
+    -->
+    <script
+        id="sap-ui-bootstrap"
+        src="https://ui5.sap.com/1.148.5/resources/sap-ui-core.js"
+        data-sap-ui-theme="sap_horizon"
+        data-sap-ui-resource-roots='{"sap.learning.taxbalance": "./"}'
+        data-sap-ui-oninit="module:sap/ui/core/ComponentSupport"
+        data-sap-ui-compat-version="edge"
+        data-sap-ui-async="true"
+        data-sap-ui-frame-options="trusted">
+    </script>
+</head>
+
+<body class="sapUiBody">
+    <!--
+        This empty div is the whole application. ComponentSupport reads
+        data-name, instantiates sap.learning.taxbalance.Component (our
+        Component.js), which reads manifest.json, which starts Fiori Elements,
+        which reads the OData annotations, which builds the screens.
+    -->
+    <div
+        data-sap-ui-component
+        data-name="sap.learning.taxbalance"
+        data-id="container"
+        data-settings='{"id" : "taxbalance"}'
+        data-handle-validation="true">
+    </div>
+</body>
+</html>

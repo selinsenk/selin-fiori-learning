@@ -1,0 +1,19 @@
+{
+  "name": "taxbalance",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fiori Elements V4 app - optional standalone dev server via UI5 tooling",
+  "scripts": {
+    "start": "ui5 serve --config ui5.yaml --open index.html",
+    "build": "ui5 build --config ui5.yaml --clean-dest --dest dist"
+  },
+  "devDependencies": {
+    "@ui5/cli": "^4.0.58",
+    "@sap/ux-ui5-tooling": "^1.29.0"
+  },
+  "ui5": {
+    "dependencies": [
+      "@sap/ux-ui5-tooling"
+    ]
+  }
+}

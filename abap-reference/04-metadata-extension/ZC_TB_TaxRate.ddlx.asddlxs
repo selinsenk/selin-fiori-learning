@@ -1,0 +1,59 @@
+/*******************************************************************************
+ * ZC_TB_TaxRate.ddlx  —  TAB 1's EDITABLE TABLE
+ *
+ * COMPARE WITH: `annotate service.TaxRates with @(UI.LineItem: [...])`
+ *               in srv/annotations.cds
+ ******************************************************************************/
+
+@Metadata.layer: #CORE
+
+@UI: {
+  headerInfo: {
+    typeName       : 'Tax Rate',
+    typeNamePlural : 'Tax Rates',
+    title          : { type: #STANDARD, value: 'RateType' }
+  }
+}
+
+annotate entity ZC_TB_TaxRate with
+{
+  // The technical key. Hidden from the user, present in the service because
+  // OData needs it to address the row.
+  @UI.hidden: true
+  TaxRateUUID;
+
+  // The parent keys. Also hidden - the user picked them on Screen 1.
+  @UI.hidden: true
+  CompanyCode;
+  @UI.hidden: true
+  LayerID;
+
+  /*
+   * The two editable columns.
+   *
+   * There is NO annotation here that says "make this editable". Editability
+   * comes from the BEHAVIOR DEFINITION (05-behavior/): because the behavior
+   * grants `update` and `create` on this entity and does not mark these fields
+   * `readonly`, the framework renders input fields.
+   *
+   * This is the same split as in our CAP app, and it is a good mental model:
+   *      CDS / annotations  ->  what it LOOKS like
+   *      behavior definition ->  what you may DO to it
+   */
+  @UI.lineItem: [{ position: 10, importance: #HIGH }]
+  @EndUserText.label: 'Rate Type'
+  RateType;
+
+  @UI.lineItem: [{ position: 20, importance: #HIGH }]
+  @EndUserText.label: 'Rate Value (%)'
+  RateValue;
+
+  @UI.hidden: true
+  CreatedBy;
+  @UI.hidden: true
+  CreatedAt;
+  @UI.hidden: true
+  LastChangedBy;
+  @UI.hidden: true
+  LocalLastChangedAt;
+}

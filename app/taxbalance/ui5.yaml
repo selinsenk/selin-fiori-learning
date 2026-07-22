@@ -1,0 +1,65 @@
+# ui5.yaml — configuration for the SAPUI5 tooling (@ui5/cli)
+#
+# WHEN DO YOU NEED THIS FILE?
+# ---------------------------
+# You do NOT need it to run this project. `npm start` in the project root starts
+# CAP, and CAP serves both the OData service AND this app. One command, one port.
+#
+# This file exists because it is what a REAL Fiori project looks like. In a real
+# landscape the backend is an S/4HANA system somewhere else, so the frontend
+# needs its own dev server that proxies API calls to it. That server is
+# `ui5 serve`, and this file configures it.
+#
+# Running it (two terminals):
+#     terminal 1, project root:      npm start          -> CAP on :4004
+#     terminal 2, app/taxbalance:    npm install        (once)
+#                                    npm start          -> UI5 on :8080
+#
+# Then open http://localhost:8080/index.html
+#
+# ABAP EQUIVALENT: exactly the same file. Only the `url:` under backend changes,
+# from http://localhost:4004 to https://your-s4-system:44300, plus a `client`
+# and destination settings.
+
+specVersion: "3.1"
+
+metadata:
+  name: taxbalance
+
+# "application" = a UI5 app. The other type is "library".
+type: application
+
+server:
+  customMiddleware:
+
+    # ------------------------------------------------------------------------
+    # fiori-tools-proxy — the important one.
+    #
+    # The browser may not call http://localhost:4004 directly from a page served
+    # on http://localhost:8080: that is a different origin, and the browser
+    # blocks it (CORS). The proxy solves this by making the OData service look
+    # like it lives on the same server as the app.
+    #
+    # Any request the app makes to /odata/... is forwarded to
+    # http://localhost:4004/odata/... behind the scenes.
+    #
+    # This is why manifest.json says  "uri": "/odata/v4/tax-balance/"  with no
+    # host. Relative URLs are what make the same app work unchanged against the
+    # mock server, against CAP, and against a real S/4HANA system.
+    # ------------------------------------------------------------------------
+    - name: fiori-tools-proxy
+      afterMiddleware: compression
+      configuration:
+        ignoreCertError: false
+        backend:
+          - path: /odata
+            url: http://localhost:4004
+
+    # ------------------------------------------------------------------------
+    # fiori-tools-appreload — reloads the browser when you save a file.
+    # ------------------------------------------------------------------------
+    - name: fiori-tools-appreload
+      afterMiddleware: compression
+      configuration:
+        port: 35729
+        path: webapp

@@ -1,0 +1,48 @@
+/*******************************************************************************
+ * ZC_TB_CompanyLayer.bdef  —  THE BEHAVIOR *PROJECTION*
+ *
+ * WHY A SECOND BEHAVIOR FILE?
+ * ---------------------------
+ * Same reason there are two layers of CDS views. The base behavior definition
+ * (ZI_TB_CompanyLayer.bdef) describes everything the business object CAN do.
+ * This projection says which of those capabilities THIS PARTICULAR SERVICE
+ * exposes.
+ *
+ * That lets you build one business object and publish several services from it:
+ * a full maintenance app for accountants, and a read-only display app for
+ * auditors, sharing all the logic and differing only in these `use` statements.
+ *
+ * CAP has no direct counterpart - in CAP you would define a second `service`
+ * block with @readonly projections. Same goal, different mechanism.
+ ******************************************************************************/
+
+projection;
+strict ( 2 );
+
+// This service participates in the draft handling defined by the base BO.
+use draft;
+
+define behavior for ZC_TB_CompanyLayer alias CompanyLayer
+{
+  // Expose only what this app needs. `use create;` is deliberately absent -
+  // consistent with the base BO, which does not offer it either.
+  use update;
+
+  use association _TaxRate { create; with draft; }
+
+  // The draft actions must be re-exposed explicitly, otherwise the Fiori app
+  // gets no Edit/Save/Cancel buttons.
+  use action Edit;
+  use action Activate;
+  use action Discard;
+  use action Resume;
+  use action Prepare;
+}
+
+define behavior for ZC_TB_TaxRate alias TaxRate
+{
+  use update;
+  use delete;
+
+  use association _CompanyLayer { with draft; }
+}

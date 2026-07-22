@@ -1,0 +1,56 @@
+/*******************************************************************************
+ * ZC_TB_GLAccount.ddlx  —  TAB 2's TABLE
+ *
+ * COMPARE WITH: `annotate service.GLAccounts with @(UI.LineItem: [...])`
+ *               in srv/annotations.cds
+ ******************************************************************************/
+
+@Metadata.layer: #CORE
+
+@UI: {
+  headerInfo: {
+    typeName       : 'G/L Account',
+    typeNamePlural : 'G/L Accounts',
+    title          : { type: #STANDARD, value: 'AccountName' },
+    description    : { type: #STANDARD, value: 'GLAccount' }
+  }
+}
+
+annotate entity ZC_TB_GLAccount with
+{
+  @UI.hidden: true
+  CompanyCode;
+  @UI.hidden: true
+  LayerID;
+
+  @UI.lineItem: [{ position: 10, importance: #HIGH }]
+  @EndUserText.label: 'G/L Account'
+  GLAccount;
+
+  @UI.lineItem: [{ position: 20, importance: #HIGH }]
+  @EndUserText.label: 'Account Name'
+  AccountName;
+
+  @UI.lineItem: [{ position: 30, importance: #HIGH }]
+  @EndUserText.label: 'Balance Amount'
+  BalanceAmount;
+
+  /*
+   * THE CALCULATED COLUMN.
+   *
+   * From the UI's point of view this is an ordinary column - which is the whole
+   * point. Nothing here hints that the value is computed in ABAP at read time;
+   * that fact lives in ZC_TB_GLAccount.ddls (the `virtual` keyword) and in the
+   * class ZCL_TB_GLACC_VE.
+   *
+   * Note what we do NOT write: no @UI.sortOrder and no selectionField, because
+   * (as explained in the projection view) a virtual element cannot be sorted or
+   * filtered by the database.
+   */
+  @UI.lineItem: [{ position: 40, importance: #HIGH }]
+  @EndUserText.label: 'Calculated Amount'
+  CalculatedAmount;
+
+  @UI.hidden: true
+  Currency;
+}

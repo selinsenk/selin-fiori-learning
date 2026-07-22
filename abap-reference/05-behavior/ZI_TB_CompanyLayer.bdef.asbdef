@@ -1,0 +1,206 @@
+/*******************************************************************************
+ * ZI_TB_CompanyLayer.bdef  —  THE BEHAVIOR DEFINITION (base BO)
+ *
+ * COMPARE WITH: srv/tax-service.cds, specifically
+ *                 @odata.draft.enabled
+ *                 @Capabilities.InsertRestrictions.Insertable: false
+ *                 @Capabilities.DeleteRestrictions.Deletable : false
+ *
+ * A behavior definition answers ONE question: what may be done to this business
+ * object? Nothing else. It is a small language of its own - not ABAP, not CDS.
+ *
+ * The CDS views said what the data LOOKS like. This says what you may DO.
+ ******************************************************************************/
+
+/*------------------------------------------------------------------------------
+ * THE HEADER - three lines that decide the character of the whole object
+ *----------------------------------------------------------------------------*/
+
+/*
+ * IMPLEMENTATION TYPE: managed vs unmanaged
+ *
+ *   managed   - RAP does the persistence for you. It generates the INSERT /
+ *               UPDATE / DELETE, fills the admin fields, handles the draft
+ *               tables, does the locking. You only write the extras
+ *               (validations, determinations, actions).
+ *   unmanaged - You write every database operation yourself. Used when wrapping
+ *               an existing legacy application (a BAPI, a function module) that
+ *               already owns the data.
+ *
+ * Almost all new development is `managed`. `unique` means the implementing
+ * class handles this BO exclusively.
+ *
+ * CAP is always "managed" in this sense - CAP's generic handlers do the SQL,
+ * and you add `before`/`after` hooks. That is why srv/tax-service.js contains
+ * no INSERT statements.
+ */
+managed implementation in class zbp_i_tb_companylayer unique;
+
+/*
+ * STRICT MODE. `strict ( 2 )` turns on the newest set of syntax checks and
+ * required-feature rules. Always write it in new code: without it you can build
+ * an object that silently misbehaves, and you cannot enable it later without
+ * rework. The number is a version, and 2 is current.
+ */
+strict ( 2 );
+
+/*
+ * *** THE DRAFT SWITCH. *** This single line is the RAP counterpart of CAP's
+ * @odata.draft.enabled. Everything you learned about draft in srv/tax-service.cds
+ * applies here: shadow tables, IsActiveEntity in every URL, Edit/Save/Cancel.
+ */
+with draft;
+
+
+/*------------------------------------------------------------------------------
+ * THE ROOT ENTITY
+ *----------------------------------------------------------------------------*/
+define behavior for ZI_TB_CompanyLayer alias CompanyLayer
+
+// Where the active data is stored...
+persistent table ztb_cmplayer
+// ...and where drafts are parked. (ADT generates this table for you via a
+// quick-fix on this very line.)
+draft table ztb_cmplayer_d
+
+/*
+ * LOCKING AND ETAGS
+ *
+ * `lock master` - this entity owns the lock. When a user starts editing, RAP
+ *                 sets an exclusive lock on THIS row; children are covered by
+ *                 it (see `lock dependent by` on the child).
+ * `total etag LastChangedAt` - the ETag that covers the whole object tree.
+ * `etag master LocalLastChangedAt` - the ETag for this row alone.
+ *
+ * CAP handles concurrency differently (ETags via the @odata.etag annotation on
+ * a modifiedAt field, and draft locks in a draft admin table), so there is no
+ * line-for-line equivalent - but the intent is the same: stop two users from
+ * silently overwriting each other.
+ */
+lock master total etag LastChangedAt
+etag master LocalLastChangedAt
+
+/*
+ * AUTHORIZATION
+ * `authorization master ( instance )` - this entity decides who may do what,
+ * and the decision can depend on the concrete instance (e.g. only company codes
+ * the user is responsible for). The check itself goes in the
+ * `get_instance_authorizations` method of the behavior class.
+ */
+authorization master ( instance )
+
+{
+  /*--------------------------------------------------------------------------
+   * THE OPERATIONS
+   *
+   * Note what is ABSENT: there is no `create;` and no `delete;`.
+   *
+   * That omission IS the feature. It is the RAP equivalent of writing, in CAP:
+   *     @Capabilities.InsertRestrictions.Insertable: false
+   *     @Capabilities.DeleteRestrictions.Deletable : false
+   * Company/layer combinations come from finance master data, so this app may
+   * only edit them (to maintain their tax rates), never create or delete them.
+   *
+   * The Fiori Elements UI reads this out of the generated OData metadata and
+   * simply does not render a Create or Delete button. You write no UI code.
+   *-------------------------------------------------------------------------*/
+  update;
+
+  // Key fields must never be changed - changing a key is a delete plus an
+  // insert, not an update.
+  field ( readonly ) CompanyCode, LayerID;
+
+  // The admin fields are filled by the framework, so the client may not send
+  // them. `numbering : managed` on a UUID key would go here too.
+  field ( readonly ) CreatedBy, CreatedAt, LastChangedBy, LastChangedAt, LocalLastChangedAt;
+
+  /*--------------------------------------------------------------------------
+   * THE COMPOSITION
+   *
+   * Granting `create` on the association is what allows the user to add rows to
+   * the Tab 1 table. Without it the table would be read-only even though the
+   * child behavior allows updates - the user could never get a first row in.
+   *
+   * `with draft` propagates drafting down to the child.
+   *-------------------------------------------------------------------------*/
+  association _TaxRate { create; with draft; }
+
+  /*--------------------------------------------------------------------------
+   * THE DRAFT ACTIONS
+   *
+   * These are the buttons in the Fiori app:
+   *     Edit     -> draft action Edit      (creates the draft copy)
+   *     Save     -> draft action Activate  (writes draft over active)
+   *     Cancel   -> draft action Discard   (throws the draft away)
+   *     Resume   -> continue an old draft you left behind
+   *     Prepare  -> runs validations before saving, so errors appear early
+   *
+   * You DECLARE them here and the framework implements them. Compare with our
+   * CAP test, where the very same actions appeared in the metadata without us
+   * writing anything:
+   *     POST .../TaxBalanceService.draftEdit
+   *     POST .../TaxBalanceService.draftActivate
+   *
+   * `optimized` on Activate lets RAP skip re-reading data it already has.
+   *-------------------------------------------------------------------------*/
+  draft action Resume;
+  draft action Edit;
+  draft action Activate optimized;
+  draft action Discard;
+  draft determine action Prepare
+  {
+    // Which validations must run before a save is allowed.
+    validation TaxRate~validateRateValue;
+  }
+}
+
+
+/*------------------------------------------------------------------------------
+ * THE CHILD ENTITY
+ *----------------------------------------------------------------------------*/
+define behavior for ZI_TB_TaxRate alias TaxRate
+
+persistent table ztb_taxrate
+draft table ztb_taxrate_d
+
+// The child has its own local ETag...
+etag master LocalLastChangedAt
+// ...but it does NOT own a lock or an authorization decision. Both are
+// inherited from the parent through the composition. This is why a user who is
+// allowed to edit a company/layer is automatically allowed to edit its rates.
+lock dependent by _CompanyLayer
+authorization dependent by _CompanyLayer
+
+{
+  update;
+  delete;
+
+  // `numbering : managed` = RAP generates the UUID on create. This is the exact
+  // counterpart of CAP filling `key ID : UUID` automatically.
+  field ( numbering : managed, readonly ) TaxRateUUID;
+
+  // Foreign keys are set by the framework from the parent context, never by
+  // the client.
+  field ( readonly ) CompanyCode, LayerID;
+  field ( readonly ) CreatedBy, CreatedAt, LastChangedBy, LocalLastChangedAt;
+
+  // A field the user MUST fill. Fiori Elements renders the red asterisk and
+  // blocks the save. CAP equivalent: @Common.FieldControl: #Mandatory.
+  field ( mandatory ) RateType, RateValue;
+
+  association _CompanyLayer { with draft; }
+
+  /*--------------------------------------------------------------------------
+   * A VALIDATION
+   *
+   * `validation <name> on save { create; update; }` means: before saving a
+   * created or updated row, call the method of that name in the behavior class
+   * and let it raise messages.
+   *
+   * There is no equivalent in our CAP implementation - we did not add input
+   * checking. In CAP you would write it as:
+   *     this.before(['CREATE','UPDATE'], TaxRates, req => { ... req.error(...) })
+   * -> see ../07-classes/ZBP_I_TB_COMPANYLAYER.clas.abap for the implementation.
+   *-------------------------------------------------------------------------*/
+  validation validateRateValue on save { create; field RateValue; }
+}

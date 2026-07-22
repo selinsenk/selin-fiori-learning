@@ -1,0 +1,33 @@
+{
+  "name": "selin-fiori-learning",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Learning project: SAP Fiori Elements (OData V4) + CAP local backend + an ABAP/RAP reference implementation",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "cds-serve",
+    "watch": "cds watch",
+    "deploy": "cds deploy --to sqlite:db.sqlite"
+  },
+  "dependencies": {
+    "@sap/cds": "^10",
+    "@cap-js/sqlite": "^3",
+    "express": "^4"
+  },
+  "devDependencies": {
+    "@sap/cds-dk": "^10"
+  },
+  "cds": {
+    "//": "CAP configuration. 'requires.db.kind = sqlite' with no credentials means an IN-MEMORY database that is rebuilt from db/data/*.csv every time the server starts. Great for learning: you always get the same clean starting point.",
+    "requires": {
+      "db": {
+        "kind": "sqlite",
+        "credentials": {
+          "url": ":memory:"
+        }
+      }
+    }
+  }
+}
